@@ -30,7 +30,7 @@ func init() {
 	var err error
 	bucket := os.Getenv("KEYS_BUCKET")
 	ctx := context.Background()
-	keysBucket, err := blob.NewGcsBucket(ctx, bucket)
+	keysBucket, err := blob.NewGcsBlobStorage(ctx, bucket, "")
 	if err != nil {
 		panic(err)
 	}
