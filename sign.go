@@ -24,14 +24,14 @@ const BlobPrefix = ".keys"
 // Provides functions to create and validate jwts.
 // Uses Google Cloud Storage to store the 4096 bit private RSA keys.
 type Signer[T jwt.Claims] struct {
-	blobStorage blob.BlobStorage
+	blobStorage blob.Storage
 	cachedKeys  *sync.Map
 	newClaims   func() T
 }
 
 // Returns a new Signer to create and validate jwt tokens. The signer will store
 // the RSA keys in the ".keys/" folder of the provided blob storage.
-func NewSigner[T jwt.Claims](blobStorage blob.BlobStorage, newClaims func() T) (*Signer[T], error) {
+func NewSigner[T jwt.Claims](blobStorage blob.Storage, newClaims func() T) (*Signer[T], error) {
 	gcsJwt := &Signer[T]{
 		blobStorage: blobStorage,
 		cachedKeys:  &sync.Map{},
