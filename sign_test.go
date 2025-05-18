@@ -28,7 +28,7 @@ var GcsJwt *sign.Signer[*Claims]
 
 func init() {
 	var err error
-	bucket := os.Getenv("KEYS_BUCKET")
+	bucket := os.Getenv("GCS_BUCKET")
 	ctx := context.Background()
 	keysBucket, err := blob.NewGcsBlobStorage(ctx, bucket, "")
 	if err != nil {

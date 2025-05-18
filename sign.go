@@ -8,6 +8,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"net/http"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -18,6 +19,8 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
+const BlobPrefix = ".keys"
+
 // Provides functions to create and validate jwts.
 // Uses Google Cloud Storage to store the 4096 bit private RSA keys.
 type Signer[T jwt.Claims] struct {
@@ -26,7 +29,8 @@ type Signer[T jwt.Claims] struct {
 	newClaims   func() T
 }
 
-// Returns a new Signer to create and validate jwt tokens.
+// Returns a new Signer to create and validate jwt tokens. The signer will store
+// the RSA keys in the ".keys/" folder of the provided blob storage.
 func NewSigner[T jwt.Claims](blobStorage blob.BlobStorage, newClaims func() T) (*Signer[T], error) {
 	gcsJwt := &Signer[T]{
 		blobStorage: blobStorage,
@@ -173,7 +177,8 @@ func (s *Signer[T]) rsaKeys(ctx context.Context, keyIds []string) ([]*rsa.Privat
 		}
 
 		// read from storage
-		keyBytes, err := s.blobStorage.Read(ctx, keyId)
+		keyPath := path.Join(BlobPrefix, keyId)
+		keyBytes, err := s.blobStorage.Read(ctx, keyPath)
 		if err == nil {
 			block, _ := pem.Decode(keyBytes)
 			key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
@@ -197,10 +202,10 @@ func (s *Signer[T]) rsaKeys(ctx context.Context, keyIds []string) ([]*rsa.Privat
 			})
 
 			// upload if does not yet exist
-			err = s.blobStorage.WriteIfMissing(ctx, keyId, keyBytes)
+			err = s.blobStorage.WriteIfMissing(ctx, keyPath, keyBytes)
 			if err != nil {
 				// if failed to write, try to read again
-				keyBytes, err = s.blobStorage.Read(ctx, keyId)
+				keyBytes, err = s.blobStorage.Read(ctx, keyPath)
 				if err != nil {
 					return nil, fmt.Errorf("failed to read private key: %w", err)
 				}
