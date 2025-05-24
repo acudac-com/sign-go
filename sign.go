@@ -22,7 +22,7 @@ import (
 const BlobPrefix = ".keys"
 
 // Provides functions to create and validate jwts.
-// Uses Google Cloud Storage to store the 4096 bit private RSA keys.
+// Uses Google Cloud Storage to store the 2048 bit private RSA keys.
 type Signer[T jwt.Claims] struct {
 	blobStorage blob.Storage
 	cachedKeys  *sync.Map
@@ -190,7 +190,7 @@ func (s *Signer[T]) rsaKeys(ctx context.Context, keyIds []string) ([]*rsa.Privat
 			continue
 		} else {
 			// create new rsa private key
-			privKey, err := rsa.GenerateKey(rand.Reader, 4096)
+			privKey, err := rsa.GenerateKey(rand.Reader, 2048)
 			if err != nil {
 				return nil, fmt.Errorf("failed to generate private key: %w", err)
 			}

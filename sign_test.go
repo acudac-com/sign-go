@@ -39,6 +39,10 @@ func init() {
 	}
 }
 
+func TestPubKeys(t *testing.T) {
+	t.Log(GcsJwt.PublicKeys(t.Context()))
+}
+
 func TestSignedJwt(t *testing.T) {
 	ctx := context.Background()
 	signedJwt, err := GcsJwt.Sign(ctx, &Claims{Id: "sadf", Exp: time.Now().Add(1 * time.Hour).Unix()})
