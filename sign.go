@@ -103,7 +103,7 @@ func (s *Signer[T]) PublicKeys(ctx context.Context) ([]*PublicKey, error) {
 // Returns the jwt claims if validation succeeds.
 // Fails if the signedJwt has the incorrect signature or is expired.
 // Strips out any 'bearer ' or 'Bearer ' prefix
-func (s *Signer[T]) Parse(ctx context.Context, signedJwt string) (T, error) {
+func (s *Signer[T]) Parse(ctx context.Context, signedJwt string) T {
 	signedJwt = strings.TrimPrefix(signedJwt, "bearer ")
 	signedJwt = strings.TrimPrefix(signedJwt, "Bearer ")
 	claims := s.newClaims()
@@ -130,11 +130,13 @@ func (s *Signer[T]) Parse(ctx context.Context, signedJwt string) (T, error) {
 		return &key[0].PublicKey, nil
 	})
 	if err != nil {
-		return claims, err
+		alog.Errorf(ctx, "parsing %s: %v", signedJwt, err)
+		return claims
 	} else if claims, ok := t.Claims.(T); ok {
-		return claims, nil
+		return claims
 	} else {
-		return claims, fmt.Errorf("failed to parse claims")
+		alog.Errorf(ctx, "parsing claims for %s", signedJwt)
+		return claims
 	}
 }
 
@@ -142,14 +144,14 @@ func (s *Signer[T]) Parse(ctx context.Context, signedJwt string) (T, error) {
 // Fails if the signedJwt has the incorrect signature or is expired.
 // Strips out any 'bearer ' or 'Bearer ' prefix
 // Returns an empty claims, instead of an error, if the provided key is not found in the incoming ctx.
-func (s *Signer[T]) ParseCtx(ctx context.Context, key string) (T, error) {
+func (s *Signer[T]) ParseCtx(ctx context.Context, key string) T {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return s.newClaims(), nil
+		return s.newClaims()
 	}
 	vals := md.Get(key)
 	if len(vals) == 0 {
-		return s.newClaims(), nil
+		return s.newClaims()
 	}
 	return s.Parse(ctx, vals[0])
 }
@@ -158,12 +160,23 @@ func (s *Signer[T]) ParseCtx(ctx context.Context, key string) (T, error) {
 // Fails if the signedJwt has the incorrect signature or is expired.
 // Strips out any 'bearer ' or 'Bearer ' prefix
 // Returns an empty claims, instead of an error, if the provided header is not found in the incoming ctx.
-func (s *Signer[T]) ParseHeader(req *http.Request, headerKey string) (T, error) {
+func (s *Signer[T]) ParseHeader(req *http.Request, headerKey string) T {
 	header := req.Header.Get(headerKey)
 	if header == "" {
-		return s.newClaims(), nil
+		return s.newClaims()
 	}
 	return s.Parse(req.Context(), header)
+}
+
+func (s *Signer[T]) ParseCookie(req *http.Request, cookieKey string) T {
+	cookie, err := req.Cookie(cookieKey)
+	if err != nil {
+		return s.newClaims()
+	}
+	if cookie == nil || cookie.Value == "" {
+		return s.newClaims()
+	}
+	return s.Parse(req.Context(), cookie.Value)
 }
 
 // Returns the rsa private keys for the given key ids. If the key does not exist, it will be created.
